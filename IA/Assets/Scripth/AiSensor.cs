@@ -1,6 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.Serialization;
+using System;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -12,6 +15,22 @@ public class AiSensor : MonoBehaviour
     public float maxVisionDistance = 20f;
 
     public Color visionColor;
+    public LayerMask mask;
+
+    [Serializable]
+    public class OnPlayerDetectClass : UnityEvent { }
+
+    [FormerlySerializedAs("OnDetectPlayer")]
+    [SerializeField]
+    public OnPlayerDetectClass m_OnDetectPlayer = new OnPlayerDetectClass();
+
+    [Serializable]
+    public class OnPlayerLostClass : UnityEvent { }
+
+    [FormerlySerializedAs("OnPlayerLost")]
+    [SerializeField]
+    public OnPlayerLostClass m_OnLostPlayer = new OnPlayerLostClass();
+
 
     private void Update()
     {
@@ -20,12 +39,33 @@ public class AiSensor : MonoBehaviour
 
         if (angle < visionAngle)
         {
-            Debug.Log("Lo está viendo");
+            RaycastHit hit;
+
+            if(Physics.Raycast(transform.position, targetDirection, out hit, maxVisionDistance, mask))
+            {
+                if (hit.collider != null)
+                {
+                    if(hit.collider.transform == AiManager.instance.player)
+                    {
+                        Debug.DrawRay(transform.position, targetDirection, Color.red);
+                        m_OnDetectPlayer?.Invoke();
+                    }
+                    else
+                    {
+                        m_OnLostPlayer?.Invoke();
+                    }
+                }
+            }
+        }
+        else
+        {
+            m_OnLostPlayer?.Invoke();
         }
     }
 }
 
 #if UNITY_EDITOR
+[ExecuteAlways]
 [CustomEditor(typeof(AiSensor))] 
 public class EnemyVisionSensor: Editor
 {
